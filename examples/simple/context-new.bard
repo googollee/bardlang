@@ -1,0 +1,30 @@
+package main
+
+@import("stdlib/allocator")
+@import("jmalloc")
+@import("bmalloc")
+
+// stdlib/allocator
+// type allocator interface {
+//   malloc(size size_t) own &T
+// }
+
+// @new(comp T type, init_value &T) own &T
+// `new()` calls `malloc(@size(T))` and init the memory with `init_value`, then return.
+
+func return_int() own &int 
+  @with[allocator.allocator] {
+  return @new(int, 10)
+}
+
+// also may be injected inside `jmalloc` package.
+@inject(jmalloc.allocator)
+
+func main() 
+  @with[allocator.allocator] {
+  p := @new(int, 10) // from jmalloc, p : own &int
+
+  @inject(bmalloc.allocator)
+
+  p = return_int() // from bmalloc, previous p is freed here
+}

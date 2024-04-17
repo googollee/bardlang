@@ -1,0 +1,34 @@
+package main
+
+type SchemaField struct {
+  name string
+  type string
+  size uint
+}
+
+func ToSchema(T comp type) value {
+  let schema_fields = [@fields(T).len()]SchemaField
+  for (i, field) := @fields(T).with_index() {
+    schema_fields[i] = {
+      .name: field.name(),
+      .value: {
+        .name: field.name(),
+        .type: field.type().name(),
+        .size: field.type().size(),
+      }
+    }
+  }
+
+  return schema_fields
+}
+
+type User struct {
+  name string
+  age int
+}
+
+let schema_user = ToSchema(User)
+
+def main() -> () {
+
+}

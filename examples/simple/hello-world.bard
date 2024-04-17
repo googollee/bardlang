@@ -1,0 +1,17 @@
+package main
+
+// @xxx means built-in functions which provides by the compiler
+@import("stdlib/io") // reference with package name `io`
+
+fn main() {
+  let output = {
+    let strings = @import("stdlib/strings")
+    return strings.Join([]string{"Hello", "world!", ", "})
+  }
+  // `strings` is not defined
+
+  io.println(output)
+  // Output: Hello, world!
+
+  // return () by default
+}
