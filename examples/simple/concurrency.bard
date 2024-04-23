@@ -1,16 +1,17 @@
 package main
 
 // @xxx means built-in functions which provides by the compiler
-@import("stdlib/epoll") // reference with package name `io`
+@import("stdlib/epoll") // reference with package name `epoll`
 @import("stdlib/io") // reference with package name `io`
-@import("linux/syscall") // reference with package name `io`
+@import("linux/syscall") // reference with package name `syscall`
 
+// Defined in `stdlib/io`.
 type io.IOScheduler interface {
   CreateEvent(io.fd, io.direction, fn()) *io.event
   AddEvent(*io.event)
 }
 
-fn read(fd io.fd, buf []byte) Result
+fn Read(fd io.fd, buf []byte) Result
   with io.IOScheduler {
     frame := @CurrentFrame()
     event := CreateEvent(fd, io.IN, fn() {
@@ -26,7 +27,7 @@ fn read(fd io.fd, buf []byte) Result
 
 fn main() {
   fd := io.Connect("https://google.com")
-  buf := = @ZeroValue([32]byte)
-  ret := read(fd, @As(mut []byte, buf))
+  buf := @ZeroValue([32]byte)
+  ret := Read(fd, @As(mut []byte, buf))
 }
 
