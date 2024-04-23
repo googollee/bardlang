@@ -6,20 +6,41 @@ type SchemaField struct {
   size uint
 }
 
-func ToSchema(T comp type) value {
-  let schema_fields = [@fields(T).len()]SchemaField
-  for (i, field) := @fields(T).with_index() {
-    schema_fields[i] = {
+func Schema(T comp type) value {
+  let schema_fields = [@fields(T).len()]@Function{}
+
+  for let (i, field) = @fields(T).with_index() {
+    schema_fields[i] = @Function{
       .name: field.name(),
-      .value: {
-        .name: field.name(),
-        .type: field.type().name(),
-        .size: field.type().size(),
-      }
+      .output: SchemaField,
     }
   }
 
-  return schema_fields
+  return @CreateInterface(schema_fields)
+}
+
+func SchemaValue(T comp type) value{
+  let schema_funcs = [@fields(T).len()]@Function{}
+
+  for let (i, field) = @fields(T).with_index() {
+    schema_funcs[i] = @Function{
+      .name: field.name(),
+      .output: SchemaField,
+    }
+  }
+
+  ret := @CreateStruct(schema_fields)
+
+  for let field = @fields(T) {
+    let field = @StructFieldWithName(ret, field.name())
+    field = {
+      .name: field.name(),
+      .type: field.type(),
+      .size: field.size(),
+    }
+  }
+
+  return ret
 }
 
 type User struct {
@@ -27,8 +48,10 @@ type User struct {
   age int
 }
 
-let schema_user = ToSchema(User)
-
-def main() -> () {
-
+def query() -> Result[own &User] {
+  ret := @new(User)
+  if err := db.Where(User::name().eq("name"), User::age().gt(18)).first(&mut ret); err != nil {
+    return ERR(err)
+  }
+  return OK(ret)
 }
