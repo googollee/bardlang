@@ -4,6 +4,7 @@ package main
 @import("stdlib/epoll") // reference with package name `epoll`
 @import("stdlib/io") // reference with package name `io`
 @import("linux/syscall") // reference with package name `syscall`
+@import("stdlib/mem")
 
 // Defined in `stdlib/io`.
 type io.IOScheduler interface {
@@ -27,7 +28,12 @@ fn Read(fd io.fd, buf []byte) Result
 
 fn main() {
   fd := io.Connect("https://google.com")
-  buf := @ZeroValue([32]byte)
-  ret := Read(fd, @As(mut []byte, buf))
+  buf := mem.ZeroValue([32]byte)
+
+  frame := @Go(fn () 
+    with buf := @As(mut []byte, buf) {
+    ret := Read(fd, buf)
+  })
+  frame.Join()
 }
 
