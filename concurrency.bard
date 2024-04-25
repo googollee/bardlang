@@ -1,0 +1,55 @@
+package main
+
+// @xxx means built-in functions which provides by the compiler
+@import("runtime/thread")
+@import("runtime/allocator")
+@import("linux/epoll")
+@import("linux/syscall")
+
+@import("stdlib/bmalloc")
+@import("stdlib/io")
+
+// Defined in `runtime/allocator`.
+
+type Allocator interface {
+  ZeroValue(comp @Type) comp @Type
+}
+
+// Defined in `runtime/thread`.
+
+type thread.Task interface {
+  Done() bool
+}
+
+type thread.Scheduler interface {
+  AddTask(task thread.Task)
+}
+
+fn Read(fd io.fd, buf []byte) Result
+  with thread.Scheduler {
+    frame := @CurrentFrame()
+    task := epoll.CreateTask(fd, io.IN, fn() {
+      @Resume(frame)
+    }
+    AddTask(task)
+    for !task.Done() {
+      @Pause()
+    }
+
+    return syscall.Read(fd, buf)
+}
+
+@Inject(epoll.Scheduler())
+@Inject(bmalloc.Allocator())
+
+fn main() 
+  with allocator.Allocator {
+  fd := io.Connect("https://google.com")
+  buf := ZeroValue([32]byte)
+
+  frame := @Go(fn () 
+    with buf := @As(mut []byte, buf) {
+    ret := Read(fd, buf)
+  })
+  @Join(frame)
+}
