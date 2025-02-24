@@ -1,55 +1,62 @@
 package main
 
 // @xxx means built-in functions which provides by the compiler
-@import("runtime/thread")
-@import("runtime/allocator")
-@import("linux/epoll")
-@import("linux/syscall")
-
-@import("stdlib/bmalloc")
-@import("stdlib/io")
-
-// Defined in `runtime/allocator`.
-
-type Allocator interface {
-  ZeroValue(comp @Type) comp @Type
-}
 
 // Defined in `runtime/thread`.
 
 type thread.Task interface {
-  Done() bool
+  done() bool
 }
 
 type thread.Scheduler interface {
-  AddTask(task thread.Task)
+  add_task(task *thread.Task)
 }
 
-fn Read(fd io.fd, buf []byte) Result
-  with thread.Scheduler {
-    frame := @CurrentFrame()
-    task := epoll.CreateTask(fd, io.IN, fn() {
-      @Resume(frame)
-    }
-    AddTask(task)
-    for !task.Done() {
-      @Pause()
-    }
+// Defined in `linux/epoll`
 
-    return syscall.Read(fd, buf)
+type epoll.Runtime struct{}
+
+fn (rt *epoll.Runtime) read(fd io.FD, buf []Byte) Size!
+  let frame = @frame.current()
+  let task = rt.create_task(fd, io.IN, fn() {
+    frame.resume()
+  }
+
+  for !task.done() {
+    frame.pause()
+  }
+
+  return syscall.Read(fd, buf)
 }
 
-@Inject(epoll.Scheduler())
-@Inject(bmalloc.Allocator())
+@import("linux/epoll")
+@import("linux/syscall")
+@import("stdlib/bmalloc")
+@import("stdlib/io")
+
+fn (rt *epoll.Runtime) create_task(fd io.FD, direction epoll.Direction, func fn()) {}
+
+// main
 
 fn main() 
-  with allocator.Allocator {
-  fd := io.Connect("https://google.com")
-  buf := ZeroValue([32]byte)
+  let rt = epoll.create_runtime()
 
-  frame := @Go(fn () 
-    with buf := @As(mut []byte, buf) {
-    ret := Read(fd, buf)
+  let fd = io.connect("https://google.com").unwrap("connect google.com error: %w")
+  let buf = bmalloc.alloc_zero[[32]byte]().unwrap("no memory: %w")
+
+  for {
+    let ret = rt.read(fd, buf)
+    if ret == @error(io.eof) {
+      break
+    }
+    let end = ret.unwrap("read google.com error: %w")
+    io.print(buf[:end])
+  }
+
+  let rt_frame = syscall.fork(fn() |&rt| { rt.start() })
+
+  @frame.defer(fn() {
+    rt.end()
+    rt_frame.wait_done()
   })
-  @Join(frame)
 }
